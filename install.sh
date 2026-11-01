@@ -33,7 +33,8 @@ echo "$RAW" > /etc/xray-sh/repo
 if [[ $1 == --local ]]; then
   cp "$(dirname "$0")/xb.sh" /usr/local/bin/xb || { echo "找不到同目录下的 xb.sh"; exit 1; }
 else
-  curl -fsSL "$RAW/xb.sh" -o /usr/local/bin/xb || { echo "下载 xb.sh 失败: $RAW/xb.sh"; exit 1; }
+  curl -fsSL -H 'Cache-Control: no-cache' "${RAW}/xb.sh?t=$(date +%s)" -o /usr/local/bin/xb \
+    || { echo "下载 xb.sh 失败: $RAW/xb.sh"; exit 1; }
 fi
 chmod +x /usr/local/bin/xb
 

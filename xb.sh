@@ -2,7 +2,7 @@
 # xb - Xray 一键管理脚本
 # 命令: xb (菜单) | xb help
 
-VER="1.3.1"
+VER="1.3.2"
 BASE="/etc/xray-sh"
 NODE_DIR="$BASE/nodes"
 XRAY_BIN="/usr/local/bin/xray"
@@ -526,7 +526,9 @@ update_sh() {
   raw=$(cat "$BASE/repo" 2>/dev/null)
   [[ -n $raw ]] || die "未找到脚本仓库地址 ($BASE/repo)。把脚本放到 GitHub 后，用 install.sh 安装才会写入。"
   tmp=$(mktemp)
-  curl -fsSL "$raw/xb.sh" -o "$tmp" && bash -n "$tmp" || { rm -f "$tmp"; die "下载 xb.sh 失败: $raw/xb.sh"; }
+  curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
+    "${raw}/xb.sh?t=$(date +%s)" -o "$tmp" && bash -n "$tmp" \
+    || { rm -f "$tmp"; die "下载 xb.sh 失败: $raw/xb.sh"; }
   remote_ver=$(awk -F= '/^VER=/{gsub(/"/,"",$2); print $2; exit}' "$tmp")
   info "当前脚本: $VER"
   info "仓库脚本: ${remote_ver:-未知}"
