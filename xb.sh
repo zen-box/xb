@@ -22,15 +22,31 @@ die()  { err "$*"; exit 1; }
 
 need_root() { [[ $EUID -eq 0 ]] || die "请使用 root 用户运行"; }
 
-# 走 GitHub API，避开 raw.githubusercontent.com 缓存
+# /etc/xray-sh/repo 里是 zen-box/xb，或旧的 raw 地址
+github_repo_slug() {
+  local s=${1:-}
+  if [[ $s == https://raw.githubusercontent.com/* ]]; then
+    echo "$s" | cut -d/ -f4-5
+  elif [[ $s == */* && $s != http* ]]; then
+    echo "$s"
+  else
+    echo "zen-box/xb"
+  fi
+}
+
+latest_script_tag() {
+  curl -fsSL --max-time 12 "https://api.github.com/repos/${1}/tags?per_page=30" 2>/dev/null \
+    | jq -r '.[].name // empty' | grep -E '^v?[0-9]+\.[0-9]+' | sort -V | tail -1
+}
+
+# 按最新 git tag 拉 xb.sh（tag 地址无 main 缓存）
 fetch_xb_sh() {
-  local raw=$1 dest=$2 owner repo branch
-  owner=$(cut -d/ -f4 <<<"$raw")
-  repo=$(cut -d/ -f5 <<<"$raw")
-  branch=$(cut -d/ -f6 <<<"$raw")
-  [[ -n $owner && -n $repo ]] || return 1
+  local dest=$1 slug tag
+  slug=$(github_repo_slug "$(cat "$BASE/repo" 2>/dev/null)")
+  tag=$(latest_script_tag "$slug")
+  tag=${tag:-v1.3.3}
   curl -fsSL -H 'Accept: application/vnd.github.raw' \
-    "https://api.github.com/repos/${owner}/${repo}/contents/xb.sh?ref=${branch:-main}" \
+    "https://api.github.com/repos/${slug}/contents/xb.sh?ref=${tag}" \
     -o "$dest"
 }
 
@@ -540,8 +556,8 @@ update_sh() {
   raw=$(cat "$BASE/repo" 2>/dev/null)
   [[ -n $raw ]] || die "未找到脚本仓库地址 ($BASE/repo)。把脚本放到 GitHub 后，用 install.sh 安装才会写入。"
   tmp=$(mktemp)
-  fetch_xb_sh "$raw" "$tmp" && bash -n "$tmp" \
-    || { rm -f "$tmp"; die "下载 xb.sh 失败: $raw/xb.sh"; }
+  fetch_xb_sh "$tmp" && bash -n "$tmp" \
+    || { rm -f "$tmp"; die "下载 xb.sh 失败"; }
   remote_ver=$(awk -F= '/^VER=/{gsub(/"/,"",$2); print $2; exit}' "$tmp")
   info "当前脚本: $VER"
   info "仓库脚本: ${remote_ver:-未知}"

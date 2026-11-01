@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Xray 一键安装脚本 (xb)
-# 用法: bash <(curl -fsSL https://raw.githubusercontent.com/zen-box/xb/main/install.sh)
+# 用法: bash <(curl -fsSL https://raw.githubusercontent.com/zen-box/xb/v1.3.3/install.sh)
 # 本地测试: bash install.sh --local   (使用同目录下的 xb.sh)
 
 REPO="${REPO:-zen-box/xb}"
-BRANCH="${BRANCH:-main}"
-RAW="${RAW:-https://raw.githubusercontent.com/$REPO/$BRANCH}"
+TAG="${TAG:-v1.3.3}"
+RAW="${RAW:-https://raw.githubusercontent.com/$REPO/$TAG}"
 
 [[ $EUID -eq 0 ]] || { echo "请使用 root 用户运行"; exit 1; }
 command -v systemctl >/dev/null 2>&1 || { echo "仅支持使用 systemd 的系统 (Debian/Ubuntu/CentOS 等)"; exit 1; }
@@ -29,12 +29,12 @@ done
 
 echo "[2/3] 安装 xb 管理脚本..."
 mkdir -p /etc/xray-sh
-echo "$RAW" > /etc/xray-sh/repo
+echo "$REPO" > /etc/xray-sh/repo
 if [[ $1 == --local ]]; then
   cp "$(dirname "$0")/xb.sh" /usr/local/bin/xb || { echo "找不到同目录下的 xb.sh"; exit 1; }
 else
   curl -fsSL -H 'Accept: application/vnd.github.raw' \
-    "https://api.github.com/repos/${REPO}/contents/xb.sh?ref=${BRANCH}" \
+    "https://api.github.com/repos/${REPO}/contents/xb.sh?ref=${TAG}" \
     -o /usr/local/bin/xb \
     || { echo "下载 xb.sh 失败: $RAW/xb.sh"; exit 1; }
 fi
