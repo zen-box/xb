@@ -2,7 +2,7 @@
 # xb - Xray 一键管理脚本
 # 命令: xb (菜单) | xb help
 
-VER="1.3.0"
+VER="1.3.1"
 BASE="/etc/xray-sh"
 NODE_DIR="$BASE/nodes"
 XRAY_BIN="/usr/local/bin/xray"
@@ -173,7 +173,7 @@ apply_config() {
   mkdir -p "$XRAY_DIR" "$NODE_DIR"
   local files=("$NODE_DIR"/*.json) nodes='[]' tmp
   [[ -e ${files[0]} ]] && nodes=$(jq -s . "${files[@]}")
-  tmp=$(mktemp)
+  tmp=$(mktemp /tmp/xb-config.XXXXXX.json)
 
   jq -n --argjson nodes "$nodes" "$JQ_RENDER"'
     { log: { loglevel: "warning" },
