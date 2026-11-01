@@ -2,7 +2,7 @@
 # xb - Xray 一键管理脚本
 # 命令: xb (菜单) | xb help
 
-VER="1.3.2"
+VER="1.3.3"
 BASE="/etc/xray-sh"
 NODE_DIR="$BASE/nodes"
 XRAY_BIN="/usr/local/bin/xray"
@@ -21,6 +21,18 @@ err()  { echo -e "${R}[错误]${N} $*" >&2; }
 die()  { err "$*"; exit 1; }
 
 need_root() { [[ $EUID -eq 0 ]] || die "请使用 root 用户运行"; }
+
+# 走 GitHub API，避开 raw.githubusercontent.com 缓存
+fetch_xb_sh() {
+  local raw=$1 dest=$2 owner repo branch
+  owner=$(cut -d/ -f4 <<<"$raw")
+  repo=$(cut -d/ -f5 <<<"$raw")
+  branch=$(cut -d/ -f6 <<<"$raw")
+  [[ -n $owner && -n $repo ]] || return 1
+  curl -fsSL -H 'Accept: application/vnd.github.raw' \
+    "https://api.github.com/repos/${owner}/${repo}/contents/xb.sh?ref=${branch:-main}" \
+    -o "$dest"
+}
 
 # ───────────────────────── 基础工具 ─────────────────────────
 
@@ -173,7 +185,9 @@ apply_config() {
   mkdir -p "$XRAY_DIR" "$NODE_DIR"
   local files=("$NODE_DIR"/*.json) nodes='[]' tmp
   [[ -e ${files[0]} ]] && nodes=$(jq -s . "${files[@]}")
-  tmp=$(mktemp /tmp/xb-config.XXXXXX.json)
+  tmp=$(mktemp) || return 1
+  mv "$tmp" "$tmp.json"
+  tmp=$tmp.json
 
   jq -n --argjson nodes "$nodes" "$JQ_RENDER"'
     { log: { loglevel: "warning" },
@@ -526,8 +540,7 @@ update_sh() {
   raw=$(cat "$BASE/repo" 2>/dev/null)
   [[ -n $raw ]] || die "未找到脚本仓库地址 ($BASE/repo)。把脚本放到 GitHub 后，用 install.sh 安装才会写入。"
   tmp=$(mktemp)
-  curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
-    "${raw}/xb.sh?t=$(date +%s)" -o "$tmp" && bash -n "$tmp" \
+  fetch_xb_sh "$raw" "$tmp" && bash -n "$tmp" \
     || { rm -f "$tmp"; die "下载 xb.sh 失败: $raw/xb.sh"; }
   remote_ver=$(awk -F= '/^VER=/{gsub(/"/,"",$2); print $2; exit}' "$tmp")
   info "当前脚本: $VER"
